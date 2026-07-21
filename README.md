@@ -23,11 +23,17 @@
 GitHub Releases から Wheel をダウンロードしてインストールします。
 
 ```bash
-# pip の場合
+# pip の場合（ローカルファイルから）
 pip install dev_log_daily-<version>-py3-none-any.whl
 
-# uv の場合
+# pip の場合（GitHub Releases から直接）
+pip install https://github.com/DMARU9/DEV-LOG-DAILY/releases/download/v<version>/dev_log_daily-<version>-py3-none-any.whl
+
+# uv の場合（ローカルファイルから）
 uv tool install dev_log_daily-<version>-py3-none-any.whl
+
+# uv の場合（GitHub Releases から直接）
+uv tool install https://github.com/DMARU9/DEV-LOG-DAILY/releases/download/v<version>/dev_log_daily-<version>-py3-none-any.whl
 ```
 
 インストール後、コマンドが使用可能になります:
@@ -41,8 +47,8 @@ dev-log-daily init --help
 
 ```bash
 # リポジトリのクローン
-git clone <repo-url>
-cd DevLogDaily
+git clone git@github.com:DMARU9/DEV-LOG-DAILY.git
+cd DEV-LOG-DAILY
 
 # 仮想環境の作成
 python3 -m venv .venv

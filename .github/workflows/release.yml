@@ -1,0 +1,119 @@
+# DEV-LOG-DAILY Release Workflow
+#
+# main ブランチにプッシュされたときに自動で:
+# 1. pyproject.toml からバージョンを読み取り
+# 2. 未リリースのバージョンであればタグを作成
+# 3. Wheel とソースアーカイブをビルド
+# 4. GitHub Release を作成し、ビルド成果物を添付
+# 5. リリース本文に CHANGELOG の該当バージョンの内容を設定
+#
+# 手動でトリガーしたい場合は、GitHub UI から workflow_dispatch を実行可能
+
+name: Release
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: リポジトリをチェックアウト
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: pyproject.toml からバージョンを取得
+        id: version
+        run: |
+          VERSION=$(grep -Po '(?<=^version = ")[^"]*' pyproject.toml)
+          echo "VERSION=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "TAG=v$VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: タグが既に存在するか確認
+        id: tag_check
+        run: |
+          if git rev-parse "${{ steps.version.outputs.TAG }}" >/dev/null 2>&1; then
+            echo "EXISTS=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "EXISTS=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: タグが既存の場合はスキップ
+        if: steps.tag_check.outputs.EXISTS == 'true'
+        run: echo "Tag ${{ steps.version.outputs.TAG }} は既にリリース済みです。スキップします。"
+
+      - name: Python をセットアップ
+        if: steps.tag_check.outputs.EXISTS == 'false'
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: ビルド依存関係をインストール
+        if: steps.tag_check.outputs.EXISTS == 'false'
+        run: |
+          python -m pip install --upgrade pip
+          pip install build
+
+      - name: Wheel とソースアーカイブをビルド
+        if: steps.tag_check.outputs.EXISTS == 'false'
+        run: python -m build
+
+      - name: ビルド成果物を検証
+        if: steps.tag_check.outputs.EXISTS == 'false'
+        run: |
+          ls -la dist/
+          python -m zipfile --list dist/dev_log_daily-*-py3-none-any.whl | head -20
+
+      - name: CHANGELOG から該当バージョンのセクションを抽出
+        if: steps.tag_check.outputs.EXISTS == 'false'
+        id: changelog
+        run: |
+          VERSION="${{ steps.version.outputs.VERSION }}"
+          BODY="$(
+            awk -v ver="$VERSION" '
+              /^## \[/ { in_section = index($0, "[" ver "]") > 0 }
+              in_section {
+                if (body != "") body = body ORS
+                body = body $0
+              }
+              END {
+                if (body == "") body = "リリースノートを参照してください。"
+                print body
+              }
+            ' CHANGELOG.md
+          )"
+          EOF=$(dd if=/dev/urandom bs=15 count=1 status=none | base64)
+          echo "body<<$EOF" >> "$GITHUB_OUTPUT"
+          echo "$BODY" >> "$GITHUB_OUTPUT"
+          echo "$EOF" >> "$GITHUB_OUTPUT"
+
+      - name: タグを作成
+        if: steps.tag_check.outputs.EXISTS == 'false'
+        uses: actions/github-script@v6
+        with:
+          script: |
+            github.rest.git.createRef({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              ref: 'refs/tags/v${{ steps.version.outputs.VERSION }}',
+              sha: context.sha
+            });
+
+      - name: GitHub Release を作成
+        if: steps.tag_check.outputs.EXISTS == 'false'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ steps.version.outputs.VERSION }}
+          name: v${{ steps.version.outputs.VERSION }}
+          body: ${{ steps.changelog.outputs.body }}
+          files: |
+            dist/dev_log_daily-${{ steps.version.outputs.VERSION }}-py3-none-any.whl
+            dist/dev_log_daily-${{ steps.version.outputs.VERSION }}.tar.gz
+          fail_on_unmatched_files: true

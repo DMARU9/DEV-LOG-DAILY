@@ -1,0 +1,16 @@
+#!/bin/bash
+# post-commit hook — Test fixture (simplified)
+set -e
+LOG_ROOT="/tmp/test-logs"
+PROJECT=$(basename "$(git rev-parse --show-toplevel)")
+GIT_DIR="$LOG_ROOT/logs/git/$PROJECT"
+DIFF_DIR="$LOG_ROOT/logs/diff/$PROJECT"
+mkdir -p "$GIT_DIR"
+mkdir -p "$DIFF_DIR"
+COMMIT=$(git rev-parse HEAD)
+TIMESTAMP=$(date -Iseconds)
+BRANCH=$(git symbolic-ref --short HEAD 2>/dev/null || echo "detached")
+echo "{\"timestamp\":\"$TIMESTAMP\",\"commit\":\"$COMMIT\",\"branch\":\"$BRANCH\"}" \
+  >> "$GIT_DIR/commits.jsonl"
+git show "$COMMIT" > "$DIFF_DIR/${COMMIT}.patch"
+echo "[post-commit] logged: $PROJECT@$BRANCH ($COMMIT)" >&2

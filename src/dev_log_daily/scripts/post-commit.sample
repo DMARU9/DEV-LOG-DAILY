@@ -1,0 +1,34 @@
+#!/bin/bash
+# post-commit hook: Git履歴をJSONL形式で収集
+#
+# インストール方法:
+#   cp post-commit.sample .git/hooks/post-commit
+#   chmod +x .git/hooks/post-commit
+
+set -e
+
+# --- 設定 ---
+LOG_ROOT="★保存したいディレクトリを指定"
+PROJECT=$(basename "$(git rev-parse --show-toplevel)")
+
+GIT_DIR="$LOG_ROOT/logs/git/$PROJECT"
+DIFF_DIR="$LOG_ROOT/logs/diff/$PROJECT"
+
+mkdir -p "$GIT_DIR"
+mkdir -p "$DIFF_DIR"
+
+# --- commit metadata を JSONL に追記 ---
+COMMIT=$(git rev-parse HEAD)
+TIMESTAMP=$(date -Iseconds)
+BRANCH=$(git symbolic-ref --short HEAD 2>/dev/null || echo "detached")
+AUTHOR=$(git log -1 --pretty=format:'%an')
+EMAIL=$(git log -1 --pretty=format:'%ae')
+MESSAGE=$(git log -1 --pretty=format:'%s')
+
+echo "{\"timestamp\":\"$TIMESTAMP\",\"commit\":\"$COMMIT\",\"author\":\"$AUTHOR\",\"email\":\"$EMAIL\",\"branch\":\"$BRANCH\",\"message\":\"$MESSAGE\"}" \
+  >> "$GIT_DIR/commits.jsonl"
+
+# --- diff を .patch ファイルとして保存 ---
+git show "$COMMIT" > "$DIFF_DIR/${COMMIT}.patch"
+
+echo "[post-commit] logged: $PROJECT@$BRANCH ($COMMIT)" >&2

@@ -1,0 +1,63 @@
+[build-system]
+requires = ["setuptools>=64.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "dev-log-daily"
+version = "0.2.0"
+description = "開発活動ログ自動収集・日報生成フレームワーク"
+readme = "README.md"
+requires-python = ">=3.11"
+license = {text = "MIT"}
+authors = [
+    {name = "DevLogDaily Contributors"},
+]
+
+dependencies = [
+    "langgraph>=0.4.0",
+    "langchain-openai>=0.3.0",
+    "click>=8.0",
+    "pydantic>=2.0",
+    "pyyaml>=6.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "build>=1.0",
+    "pytest>=8.0",
+    "pytest-asyncio>=0.24",
+    "pytest-mock>=3.14",
+]
+
+[project.scripts]
+dev-log-daily = "dev_log_daily.main:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+include = ["dev_log_daily*"]
+
+[tool.setuptools.package-data]
+"dev_log_daily" = ["scripts/*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]
+
+[tool.ruff]
+target-version = "py311"
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "N", "W", "UP"]
+
+[tool.ruff.format]
+quote-style = "double"
+
+[tool.isort]
+profile = "black"
+line_length = 100
+
+[tool.pyright]
+pythonVersion = "3.11"
+typeCheckingMode = "standard"
+exclude = ["tests/**", "tmp/**", ".venv/**"]

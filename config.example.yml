@@ -1,0 +1,51 @@
+# Dev Log Daily 設定ファイル
+# 本ファイルを実環境に合わせて編集し、 --config オプションで指定する
+
+llm:
+  collector:
+    model: Qwen3.6-35B-A3B
+    base_url: http://localhost:8080/v1
+    api_key: not-needed
+    max_input_tokens: 101072  # コンテキストウィンドウサイズ
+    max_output_tokens: 12384  # 生成最大トークン数
+  parser:
+    model: Qwen3.6-35B-A3B
+    base_url: http://localhost:8080/v1
+    api_key: not-needed
+    max_input_tokens: 101072
+    max_output_tokens: 12384
+  enricher:
+    model: Qwen3.6-35B-A3B
+    base_url: http://localhost:8080/v1
+    api_key: not-needed
+    max_input_tokens: 101072
+    max_output_tokens: 12384
+  reporter:
+    model: Qwen3.6-35B-A3B
+    base_url: http://localhost:8080/v1
+    api_key: not-needed
+    max_input_tokens: 101072
+    max_output_tokens: 12384
+
+data_sources:
+  # Copilot Chat ログ収集設定（複数ワークスペース対応）
+  # workspace_storage_dirs:
+  #   Linux (WSL / VS Code Server):
+  #     ~/.vscode-server/data/User/workspaceStorage/
+  #   Windows (VS Code Desktop):
+  #     ~/AppData/Roaming/Code/User/workspaceStorage/
+  copilot_chat:
+    workspace_storage_dirs:
+      - /path/to/.vscode-server/data/User/workspaceStorage
+      # - /mnt/c/Users/username/AppData/Roaming/Code/User/workspaceStorage  # Windows
+    max_workspaces: 50  # 収集する最大ワークスペース数（デフォルト: 50）
+  git_root_dir: /path/to/git/repos/parent
+  terminal_history_dir: /path/to/terminal/history/dir  # ターミナル履歴JSONLファイル格納ディレクトリ
+
+  # ★ 注意: 旧形式 data_sources.copilot_chat_dir は廃止されました。
+  #    上記の copilot_chat.workspace_storage_dirs を使用してください。
+
+output:
+  directory: /path/to/output
+
+timeout_seconds: 0  # LLMリクエストタイムアウト（秒）。0=無制限待機、ローカルLLM推奨

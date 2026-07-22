@@ -558,3 +558,106 @@ class TestPipelineProjectActivities:
 
         project_activities = result.get("project_activities", {})
         assert project_activities == {}
+
+
+class TestPipelineUS2:
+    """User Story 2: report_metadata を含む enriched_data の結合テスト."""
+
+    @pytest.mark.asyncio
+    async def test_report_metadata_present_in_enriched(self, pipeline_config):
+        """Enricher が report_metadata を含む enriched_data を生成すること."""
+        target_date = "2026-06-19"
+
+        enricher_response = """{
+            "cross_references": [],
+            "contradictions": [],
+            "completions": [],
+            "context": "test context",
+            "key_activities": [],
+            "projects": {
+                "project-a": {
+                    "project_name": "project-a",
+                    "source_activities": {},
+                    "time_range": {},
+                    "related_sources": []
+                }
+            },
+            "report_metadata": {
+                "mood": "productive",
+                "energy": 4,
+                "tags": ["DevLogDaily", "test"],
+                "project_moods": {}
+            }
+        }"""
+
+        with _mock_chat_openai(enricher_response):
+            result = await run_pipeline(pipeline_config, target_date)
+
+        enriched = result.get("enriched_data", {})
+        assert "report_metadata" in enriched
+        metadata = enriched["report_metadata"]
+        assert metadata.get("mood") == "productive"
+        assert metadata.get("energy") == 4
+        assert "DevLogDaily" in metadata.get("tags", [])
+
+    @pytest.mark.asyncio
+    async def test_report_metadata_with_project_moods(self, pipeline_config):
+        """report_metadata が project_moods を含む場合に正しく伝搬されること."""
+        target_date = "2026-06-19"
+
+        enricher_response = """{
+            "cross_references": [],
+            "contradictions": [],
+            "completions": [],
+            "context": "test",
+            "key_activities": [],
+            "projects": {
+                "project-a": {"project_name": "project-a", "source_activities": {}, "time_range": {}, "related_sources": []},
+                "project-b": {"project_name": "project-b", "source_activities": {}, "time_range": {}, "related_sources": []}
+            },
+            "report_metadata": {
+                "mood": "mixed",
+                "energy": 3,
+                "tags": ["DevLogDaily"],
+                "project_moods": {
+                    "project-a": {"mood": "frustrated", "energy": 2},
+                    "project-b": {"mood": "productive", "energy": 5}
+                }
+            }
+        }"""
+
+        with _mock_chat_openai(enricher_response):
+            result = await run_pipeline(pipeline_config, target_date)
+
+        enriched = result.get("enriched_data", {})
+        metadata = enriched.get("report_metadata", {})
+        project_moods = metadata.get("project_moods", {})
+        assert "project-a" in project_moods
+        assert "project-b" in project_moods
+        assert project_moods["project-a"]["mood"] == "frustrated"
+        assert project_moods["project-b"]["energy"] == 5
+
+    @pytest.mark.asyncio
+    async def test_report_metadata_default_when_missing(self, pipeline_config):
+        """Enricher が report_metadata を返さない場合、デフォルト値が設定されること."""
+        target_date = "2026-06-19"
+
+        enricher_response = """{
+            "cross_references": [],
+            "contradictions": [],
+            "completions": [],
+            "context": "test",
+            "key_activities": [],
+            "projects": {}
+        }"""
+
+        with _mock_chat_openai(enricher_response):
+            result = await run_pipeline(pipeline_config, target_date)
+
+        enriched = result.get("enriched_data", {})
+        metadata = enriched.get("report_metadata", {})
+        # デフォルト値が設定されていること
+        assert metadata.get("mood") == "productive"
+        assert metadata.get("energy") == 4
+        assert metadata.get("tags") == ["DevLogDaily"]
+        assert metadata.get("project_moods") == {}

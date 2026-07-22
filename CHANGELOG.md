@@ -2,6 +2,33 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.4.0] - 2026-07-22
+
+### 追加
+
+- **日報出力フォーマットのリファクタリング**: プロジェクト単位の入れ子構造に全面改訂
+  - YAML フロントマター: date, tags, type, mood, energy, aliases フィールドを出力
+  - 📋 総合概要: 1日の開発活動を2〜3文で要約
+  - 📊 プロジェクト別活動サマリー: プロジェクトごとの活動時間・内容をテーブル形式で表示
+  - プロジェクト詳細セクション: プロジェクトごとに概要・技術・インプット・学習・開発活動・問題・振り返り・アクション・タグをサブセクション化
+- **report_metadata**: Enricher が mood/energy/tags/project_moods を enriched_data に追加
+  - 空データ時のデフォルト値: mood=productive, energy=4, tags=[\"DevLogDaily\"]
+  - JSON パース失敗時のフォールバック: デフォルト値を自動設定
+- **Parser 活動種別分類**: PARSER_SYSTEM_PROMPT に activity type 分類指示を追加（feat/fix/docs/chore）
+- 単体テスト: 51件（test_enricher.py 22件、test_reporter.py 29件）
+- 結合テスト: 21件（test_pipeline.py）
+
+### 変更
+
+- `REPORTER_SYSTEM_PROMPT`: 従来のカテゴリ別構成から新フォーマットに全面書き換え
+- `_generate_empty_report()`: 新フォーマット（YAML フロントマター＋サマリーテーブル）に対応
+- `ENRICHER_SYSTEM_PROMPT`: report_metadata JSON 出力スキーマを追加
+- `ENRICHER_PROMPT_TEMPLATE`: mood/energy/tags 推定指示を追加
+- `_format_enriched_data()`: report_metadata 情報を LLM コンテキストに整形
+- `_format_report_metadata()`: 新規関数、フロントマター用メタデータを LLM に提供
+- `PARSER_SYSTEM_PROMPT`: 活動種別分類・関連ファイル抽出・コミットハッシュ保存の指示を追加
+- `pyproject.toml`: asyncio_mode = \"auto\" を追加（pytest-asyncio 互換性）
+
 ## [0.3.0] - 2026-07-21
 
 ### 追加

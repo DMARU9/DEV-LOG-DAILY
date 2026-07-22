@@ -558,3 +558,223 @@ class TestPipelineProjectActivities:
 
         project_activities = result.get("project_activities", {})
         assert project_activities == {}
+
+
+class TestPipelineUS2:
+    """User Story 2: report_metadata を含む enriched_data の結合テスト."""
+
+    @pytest.mark.asyncio
+    async def test_report_metadata_present_in_enriched(self, pipeline_config):
+        """Enricher が report_metadata を含む enriched_data を生成すること."""
+        target_date = "2026-06-19"
+
+        enricher_response = """{
+            "cross_references": [],
+            "contradictions": [],
+            "completions": [],
+            "context": "test context",
+            "key_activities": [],
+            "projects": {
+                "project-a": {
+                    "project_name": "project-a",
+                    "source_activities": {},
+                    "time_range": {},
+                    "related_sources": []
+                }
+            },
+            "report_metadata": {
+                "mood": "productive",
+                "energy": 4,
+                "tags": ["DevLogDaily", "test"],
+                "project_moods": {}
+            }
+        }"""
+
+        with _mock_chat_openai(enricher_response):
+            result = await run_pipeline(pipeline_config, target_date)
+
+        enriched = result.get("enriched_data", {})
+        assert "report_metadata" in enriched
+        metadata = enriched["report_metadata"]
+        assert metadata.get("mood") == "productive"
+        assert metadata.get("energy") == 4
+        assert "DevLogDaily" in metadata.get("tags", [])
+
+    @pytest.mark.asyncio
+    async def test_report_metadata_with_project_moods(self, pipeline_config):
+        """report_metadata が project_moods を含む場合に正しく伝搬されること."""
+        target_date = "2026-06-19"
+
+        enricher_response = """{
+            "cross_references": [],
+            "contradictions": [],
+            "completions": [],
+            "context": "test",
+            "key_activities": [],
+            "projects": {
+                "project-a": {"project_name": "project-a", "source_activities": {}, "time_range": {}, "related_sources": []},
+                "project-b": {"project_name": "project-b", "source_activities": {}, "time_range": {}, "related_sources": []}
+            },
+            "report_metadata": {
+                "mood": "mixed",
+                "energy": 3,
+                "tags": ["DevLogDaily"],
+                "project_moods": {
+                    "project-a": {"mood": "frustrated", "energy": 2},
+                    "project-b": {"mood": "productive", "energy": 5}
+                }
+            }
+        }"""
+
+        with _mock_chat_openai(enricher_response):
+            result = await run_pipeline(pipeline_config, target_date)
+
+        enriched = result.get("enriched_data", {})
+        metadata = enriched.get("report_metadata", {})
+        project_moods = metadata.get("project_moods", {})
+        assert "project-a" in project_moods
+        assert "project-b" in project_moods
+        assert project_moods["project-a"]["mood"] == "frustrated"
+        assert project_moods["project-b"]["energy"] == 5
+
+    @pytest.mark.asyncio
+    async def test_report_metadata_default_when_missing(self, pipeline_config):
+        """Enricher が report_metadata を返さない場合、デフォルト値が設定されること."""
+        target_date = "2026-06-19"
+
+        enricher_response = """{
+            "cross_references": [],
+            "contradictions": [],
+            "completions": [],
+            "context": "test",
+            "key_activities": [],
+            "projects": {}
+        }"""
+
+        with _mock_chat_openai(enricher_response):
+            result = await run_pipeline(pipeline_config, target_date)
+
+        enriched = result.get("enriched_data", {})
+        metadata = enriched.get("report_metadata", {})
+        # デフォルト値が設定されていること
+        assert metadata.get("mood") == "productive"
+        assert metadata.get("energy") == 4
+        assert metadata.get("tags") == ["DevLogDaily"]
+        assert metadata.get("project_moods") == {}
+
+
+class TestPipelineUS3:
+    """User Story 3: フロントマター検証の結合テスト."""
+
+    @pytest.mark.asyncio
+    async def test_frontmatter_all_fields_present(self, pipeline_config, temp_dir):
+        """パイプライン実行後の日報に全フロントマターフィールドが含まれること.
+
+        モックされたLLM応答は全ノードで同じ文字列が使われるため、
+        テスト用に YAML フロントマターを含む Markdown 文字列を返す。
+        """
+        import yaml
+
+        target_date = "2026-06-19"
+
+        mock_response = (
+            "---\n"
+            f"date: {target_date}\n"
+            "tags: [DevLogDaily, test]\n"
+            "type: daily\n"
+            "mood: productive\n"
+            "energy: 4\n"
+            "aliases: [デイリー学習レポート 2026-06-19]\n"
+            "---\n\n"
+            "# デイリー学習レポート - 2026-06-19\n\n"
+            "## 📋 総合概要\n"
+            "テスト\n\n"
+            "## 📊 プロジェクト別活動サマリー\n"
+            "| プロジェクト | 活動時間 | 主な活動内容 | 関連データソース |\n"
+            "|------------|---------|-------------|----------------|\n"
+        )
+
+        with _mock_chat_openai(mock_response):
+            result = await run_pipeline(pipeline_config, target_date)
+
+        report = result.get("daily_report", "")
+        assert report, "日報が空です"
+
+        # YAML フロントマターをパース
+        parts = report.split("---\n", 2)
+        assert len(parts) >= 3, "YAML frontmatter が見つかりません"
+        fm = yaml.safe_load(parts[1])
+
+        # 全必須フィールドの存在確認
+        assert "date" in fm
+        assert "tags" in fm
+        assert "type" in fm
+        assert "mood" in fm
+        assert "energy" in fm
+        assert "aliases" in fm
+
+    @pytest.mark.asyncio
+    async def test_frontmatter_field_values_valid(self, pipeline_config, temp_dir):
+        """フロントマターの各フィールド値が有効であること."""
+        import yaml
+
+        target_date = "2026-06-19"
+
+        mock_response = (
+            "---\n"
+            f"date: {target_date}\n"
+            "tags: [DevLogDaily, test]\n"
+            "type: daily\n"
+            "mood: reflective\n"
+            "energy: 3\n"
+            "aliases: [デイリー学習レポート 2026-06-19]\n"
+            "---\n\n"
+            "# デイリー学習レポート - 2026-06-19\n\n"
+            "## 📋 総合概要\n"
+            "テスト\n\n"
+        )
+
+        with _mock_chat_openai(mock_response):
+            result = await run_pipeline(pipeline_config, target_date)
+
+        report = result.get("daily_report", "")
+        parts = report.split("---\n", 2)
+        assert len(parts) >= 3
+        fm = yaml.safe_load(parts[1])
+
+        # mood が文字列であること
+        assert isinstance(fm["mood"], str)
+        # energy が 1-5 の整数であること
+        assert isinstance(fm["energy"], int)
+        assert 1 <= fm["energy"] <= 5
+        # tags がリスト形式であること
+        assert isinstance(fm["tags"], list)
+        assert len(fm["tags"]) <= 10
+        # aliases がリストであること
+        assert isinstance(fm["aliases"], list)
+
+    @pytest.mark.asyncio
+    async def test_frontmatter_empty_report_valid(self, empty_pipeline_config, temp_dir):
+        """空データ時の日報フロントマターが有効であること."""
+        import datetime
+        import yaml
+
+        target_date = "2026-06-19"
+
+        with _mock_chat_openai():
+            result = await run_pipeline(empty_pipeline_config, target_date)
+
+        report = result.get("daily_report", "")
+        # 空データ時は _generate_empty_report() が使われるので frontmatter が存在する
+        parts = report.split("---\n", 2)
+        assert len(parts) >= 3
+        fm = yaml.safe_load(parts[1])
+
+        # デフォルト値が正しいこと
+        assert fm["mood"] == "productive"
+        assert fm["energy"] == 4
+        assert "DevLogDaily" in fm["tags"]
+        assert fm["type"] == "daily"
+        # date フィールドが存在すること
+        date_val = fm.get("date")
+        assert date_val is not None

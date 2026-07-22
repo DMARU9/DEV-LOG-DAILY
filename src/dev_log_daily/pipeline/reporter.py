@@ -14,7 +14,7 @@ logger = logging.getLogger(__name__)
 
 REPORTER_SYSTEM_PROMPT = """\
 あなたは技術学習の記録アナリストであり、開発者の日々の学びを体系化する役割を担います。
-Copilot チャットログ、Git コミット履歴、ターミナル操作履歴を解析し、
+Copilot チャットログ、Git コミット履歴、ターミナル操作履歴、プロジェクト活動データを解析し、
 その日に関わった技術・得た学び・直面した課題を整理した「学習日報」を作成してください。
 
 この日報は週次でのふりかえりやブログ記事の素材として活用されます。
@@ -38,101 +38,83 @@ aliases: [デイリー学習レポート YYYY-MM-DD]
 
 # デイリー学習レポート - YYYY-MM-DD
 
-## ⏱ タイムトラッキング
-（任意：ざっくり時間配分）
-データから時間配分が推測できる場合は記述してください。該当しない場合は空欄のままにしてください。
-
-## 📋 概要
+## 📋 総合概要
 その日の開発活動全体を2〜3文で要約してください。
 どのような目的を持って、どんな技術領域に取り組んだのかが一目でわかるように記述します。
+プロジェクト活動データ（project_activities）を主要な情報源として活用してください。
+データがない場合は「該当なし」と記載してください。
 
-## 🛠 本日触れた技術・ツール
-その日に使用・学習した技術をカテゴリ別に整理してください。
-各技術について「何をしたか」「何を学んだか」を簡潔に記述します。
+## 📊 プロジェクト別活動サマリー
+以下の Markdown テーブル形式で、プロジェクトごとの活動を一覧表示してください。
 
-### 言語・フレームワーク
+| プロジェクト | 活動時間 | 主な活動内容 | 関連データソース |
+|------------|---------|-------------|----------------|
+| プロジェクトA | 03:15 | 〜の実装、〜の調査 | Copilot, Git, Terminal |
+
+- 活動時間は継続時間（duration）を HH:MM 形式で表示
+- データがない場合: テーブルヘッダーのみ出力（行なし）
+- ヘッダー行とセパレータ行は常に出力
+
+## プロジェクト詳細セクション
+
+プロジェクトごとに `## プロジェクト名` の見出しでセクションを作成してください（見出しレベルは `##`）。
+プロジェクトに紐づかない活動は `## その他` セクションに集約してください。
+
+### 📋 概要
+プロジェクトでの活動を2〜5文で要約。
+
+### 🛠 触れた技術・ツール
 - **技術名**: 使用目的と学んだこと
 
-### ツール・インフラ
-- **技術名**: 使用目的と学んだこと
+### 📖 インプット
+読んだ記事、見たコード、参考資料。該当なしの場合は「該当なし」。
 
-### ライブラリ・API
-- **技術名**: 使用目的と学んだこと
+### 📚 学習内容
+#### 新しく学んだこと
+- **学習トピック**: 内容
+  - キーポイント: 補足
 
-### 概念・手法
-- **概念名**: どのように触れ、何を理解したか
+#### 理解を深めたこと
+（該当データがない場合、このサブセクションは省略可）
+- **学習トピック**: 内容
+  - キーポイント: 補足
 
-## 📖 インプット
-読んだ記事、見たコード、参考にした資料など、インプットがあれば記載してください。
-該当しない場合は「該当なし」と記載して構いません。
+### 💻 開発活動
+- `feat` ユーザー認証機能を実装 — 関連ファイル: src/auth.py / コミット: abc1234
+- `fix` ログイン時のクラッシュを修正 — 関連ファイル: src/auth.py / コミット: def5678
+- `docs` API仕様書を更新 — 関連ファイル: docs/api.md
+- `chore` 依存パッケージを更新 — 関連ファイル: package.json
 
-## 📚 学習内容
-その日新たに得た知識や、理解が深まった事柄を整理します。
-後日読み返したときに理解を再現できるよう、具体的に記述してください。
+### 🚧 発生した問題と解決策
+（該当データがない場合、セクションごと省略可）
+- **問題**: 要約 → **原因**: 原因 → **解決**: 解決方法（`解決済`）
+- **問題**: 要約 → **原因**: 原因 → **解決**: 解決方法（`未解決`）
 
-### 新しく学んだこと
-- **学習トピック**: 何を学び、どのようなコンテキストで役立ったか
-  - キーポイント: 重要なポイントやコード例があれば補足
+### 🔄 振り返り
+（該当データがない場合、セクションごと省略可）
+#### うまくいったこと
+- 具体的な内容
 
-### 理解を深めたこと
-- **学習トピック**: 既存知識からどのように理解が深まったか
-  - キーポイント: 新たに得た気づき
+#### 改善したいこと
+- 具体的な内容
 
-## 💻 開発活動
-実際に行った開発作業を作業種別に整理します。
-Copilot のチャットログ・Git コミット・ターミナル操作から総合的に判断してください。
+#### 明日に活かしたい知見
+- 具体的な内容
 
-### 実装・機能追加
-- **内容**: 実装した機能や追加したコードの概要
-  - 関連ファイル: 変更したファイルパス（判別できる場合）
-  - 関連コミット: コミットハッシュ（判別できる場合）
-
-### 修正・改善
-- **内容**: 修正したバグや改善した箇所の概要
-  - 関連ファイル: 変更したファイルパス
-  - 原因: 判別できる場合
-
-### その他の作業（設定変更・ドキュメント整備など）
-- **内容**: 作業の概要
-
-## 🚧 発生した問題と解決策
-開発中に遭遇したエラー・課題と、その解決に至るプロセスを記録します。
-同じ問題に再度直面したときに参照できるよう、原因と解決策を明確にしてください。
-
-### 問題1: （問題の要約）
-- **現象**: 発生したエラーや問題の内容
-- **推定原因**: なぜ発生したか
-- **試した解決策**:
-  1. 解決策の説明 → 結果
-  2. ...
-- **最終的な解決方法**: どのように解決したか
-- **ステータス**: 解決済み / 未解決 / 一時対処
-- **得られた教訓**: この問題から学んだこと
-
-## 🔄 振り返り
-### うまくいったこと
-- 具体的に何がうまくいったか、その要因は何か
-
-### 改善したいこと
-- うまくいかなかったこと、次回どう改善するか
-
-### 明日に活かしたい知見
-- 今日の経験から得た、明日以降に活かせるポイント
-
-## 📌 翌日へのアクション
+### 📌 翌日へのアクション
+（該当データがない場合、セクションごと省略可）
 - [ ] 優先度の高いタスク
 - [ ] 継続して取り組むタスク
-- [ ] 調査・学習が必要な事項
 
-## 🏷 技術タグ
-その日の活動を表す技術キーワードをタグ形式で列挙してください。
-週次集計やブログのカテゴリ分けに使用します。
-
-`タグ1` `タグ2` `タグ3` ...
+### 🏷 技術タグ
+`タグ1` `タグ2` `タグ3`
 
 ---
 
 全てのセクションで日本語を使用してください。
+プロジェクト活動データ（project_activities）が主要な入力です。
+これを中心に日報を構成し、他のデータソース（Copilotチャット・Gitコミット・
+ターミナル履歴）は補助的な情報として使用してください。
 推測と事実を区別し、推測には「(推測)」と付記してください。
 各項目は後日検索しやすいよう、技術キーワードを明示してください。
 Frontmatter の mood と energy は収集データから適切に推測して設定してください。
@@ -149,6 +131,9 @@ REPORTER_PROMPT_TEMPLATE = """以下のデータから日報を生成してく�
 {project_activities_text}
 
 ## 補助データ
+
+### report_metadata（フロントマター情報）
+{report_metadata}
 
 ### Copilotチャット
 {copilot_chat_data}
@@ -200,7 +185,9 @@ async def reporter_node(state: DailyState, config: AppConfig) -> DailyState:
     copilot_data = _format_parsed_data(state, "copilot_chat_parsed", "Copilotチャット")
     git_data = _format_parsed_data(state, "git_commits_parsed", "Gitコミット")
     terminal_data = _format_parsed_data(state, "terminal_logs_parsed", "ターミナル履歴")
-    enriched = _format_enriched_data(state.get("enriched_data", {}))
+    enriched_data = state.get("enriched_data", {})
+    enriched = _format_enriched_data(enriched_data)
+    report_metadata = _format_report_metadata(enriched_data.get("report_metadata", {}))
     workspace_context = _format_workspace_context(state.get("copilot_chat_raw", {}))
 
     # プロジェクト活動データを取得（主要入力）
@@ -227,6 +214,7 @@ async def reporter_node(state: DailyState, config: AppConfig) -> DailyState:
         prompt = REPORTER_PROMPT_TEMPLATE.format(
             target_date=target_date,
             project_activities_text=project_activities_text or "（プロジェクト活動データなし）",
+            report_metadata=report_metadata or "（report_metadataなし）",
             copilot_chat_data=copilot_data or "（データなし）",
             workspace_context=workspace_context or "（データなし）",
             git_commits_data=git_data or "（データなし）",
@@ -373,6 +361,22 @@ def _format_enriched_data(enriched: dict) -> str:
     if enriched.get("context"):
         parts.append(f"文脈: {enriched['context']}")
 
+    # report_metadata を LLM コンテキストとして整形
+    metadata = enriched.get("report_metadata", {})
+    if metadata:
+        parts.append("report_metadata:")
+        if metadata.get("mood"):
+            parts.append(f"  全体的な気分: {metadata['mood']}")
+        if metadata.get("energy"):
+            parts.append(f"  全体的なエネルギー: {metadata['energy']}/5")
+        if metadata.get("tags"):
+            parts.append(f"  タグ候補: {', '.join(metadata['tags'])}")
+        project_moods = metadata.get("project_moods", {})
+        if project_moods:
+            parts.append("  プロジェクト別気分:")
+            for proj, moods in project_moods.items():
+                parts.append(f"    - {proj}: mood={moods.get('mood', '')}, energy={moods.get('energy', '')}/5")
+
     activities = enriched.get("key_activities", [])
     if activities:
         parts.append("主要な開発活動:")
@@ -388,35 +392,56 @@ def _format_enriched_data(enriched: dict) -> str:
     return "\n".join(parts)
 
 
+def _format_report_metadata(metadata: dict) -> str:
+    """report_metadata を LLM コンテキスト用文字列に整形する.
+
+    Args:
+        metadata: report_metadata dict（mood, energy, tags, project_moods）
+
+    Returns:
+        整形された文字列
+    """
+    if not metadata:
+        return ""
+
+    lines = []
+    if metadata.get("mood"):
+        lines.append(f"推定気分: {metadata['mood']}")
+    if metadata.get("energy"):
+        lines.append(f"推定エネルギー: {metadata['energy']}/5")
+    if metadata.get("tags"):
+        lines.append(f"タグ候補: {', '.join(metadata['tags'])}")
+
+    project_moods = metadata.get("project_moods", {})
+    if project_moods:
+        lines.append("プロジェクト別気分:")
+        for proj, moods in project_moods.items():
+            lines.append(
+                f"  - {proj}: mood={moods.get('mood', '')}, "
+                f"energy={moods.get('energy', '')}/5"
+            )
+
+    return "\n".join(lines)
+
+
 def _generate_empty_report(target_date: str) -> str:
-    """全データ空の場合の日報を生成する."""
+    """全データ空の場合の日報を生成する（新フォーマット）."""
     return (
         f"---\n"
         f"date: {target_date}\n"
-        f"tags: [DevLogDaily, LangGraph, Python, SpecKit]\n"
+        f"tags: [DevLogDaily]\n"
         f"type: daily\n"
         f"mood: productive\n"
         f"energy: 4\n"
         f"aliases: [デイリー学習レポート {target_date}]\n"
         f"---\n\n"
         f"# デイリー学習レポート - {target_date}\n\n"
-        f"## ⏱ タイムトラッキング\n\n"
-        f"## 📋 概要\n"
+        f"## 📋 総合概要\n"
         f"該当なし\n\n"
-        f"## 🛠 本日触れた技術・ツール\n"
-        f"該当なし\n\n"
-        f"## 📖 インプット\n"
-        f"該当なし\n\n"
-        f"## 📚 学習内容\n"
-        f"該当なし\n\n"
-        f"## 💻 開発活動\n"
-        f"該当なし\n\n"
-        f"## 🚧 発生した問題と解決策\n"
-        f"該当なし\n\n"
-        f"## 🔄 振り返り\n"
-        f"該当なし\n\n"
-        f"## 📌 翌日へのアクション\n"
-        f"該当なし\n\n"
-        f"## 🏷 技術タグ\n"
+        f"## 📊 プロジェクト別活動サマリー\n"
+        f"| プロジェクト | 活動時間 | 主な活動内容 | 関連データソース |\n"
+        f"|------------|---------|-------------|----------------|\n"
+        f"\n"
+        f"## プロジェクト\n"
         f"該当なし\n"
     )

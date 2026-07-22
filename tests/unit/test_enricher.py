@@ -318,3 +318,93 @@ class TestParseEnrichedJson:
         assert (
             result["projects"]["PartialProj"]["time_range"]["start"] == "2026-07-21T10:00:00+09:00"
         )
+
+
+class TestReportMetadata:
+    """report_metadata 関連のテスト (FR-005)."""
+
+    def test_report_metadata_defaults_on_empty_data(self):
+        """全データ空の場合に report_metadata がデフォルト値で設定されること.
+
+        enricher_node() の空データスキップブランチの動作を検証する。
+        空データ時は report_metadata が以下のデフォルトで設定される:
+        - mood: \"productive\"
+        - energy: 4
+        - tags: [\"DevLogDaily\"]
+        - project_moods: {}
+        """
+        result = _parse_enriched_json("not json at all")
+        metadata = result.get("report_metadata", {})
+        assert metadata.get("mood") == "productive"
+        assert metadata.get("energy") == 4
+        assert metadata.get("tags") == ["DevLogDaily"]
+        assert metadata.get("project_moods") == {}
+
+    def test_report_metadata_contains_mood_energy_tags(self):
+        """パース成功時に report_metadata が mood/energy/tags を含むこと."""
+        json_str = """{
+            "cross_references": [],
+            "contradictions": [],
+            "completions": [],
+            "context": "",
+            "key_activities": [],
+            "projects": {},
+            "report_metadata": {
+                "mood": "reflective",
+                "energy": 3,
+                "tags": ["DevLogDaily", "refactoring"],
+                "project_moods": {}
+            }
+        }"""
+        result = _parse_enriched_json(json_str)
+        metadata = result.get("report_metadata", {})
+        assert metadata.get("mood") == "reflective"
+        assert metadata.get("energy") == 3
+        assert "DevLogDaily" in metadata.get("tags", [])
+        assert "refactoring" in metadata.get("tags", [])
+
+    def test_report_metadata_project_moods_structure(self):
+        """report_metadata の project_moods が正しい構造を持つこと."""
+        json_str = """{
+            "cross_references": [],
+            "contradictions": [],
+            "completions": [],
+            "context": "",
+            "key_activities": [],
+            "projects": {},
+            "report_metadata": {
+                "mood": "productive",
+                "energy": 4,
+                "tags": ["DevLogDaily"],
+                "project_moods": {
+                    "ProjectA": {"mood": "frustrated", "energy": 3},
+                    "ProjectB": {"mood": "productive", "energy": 5}
+                }
+            }
+        }"""
+        result = _parse_enriched_json(json_str)
+        metadata = result.get("report_metadata", {})
+        project_moods = metadata.get("project_moods", {})
+        assert "ProjectA" in project_moods
+        assert "ProjectB" in project_moods
+        assert project_moods["ProjectA"]["mood"] == "frustrated"
+        assert project_moods["ProjectA"]["energy"] == 3
+        assert project_moods["ProjectB"]["mood"] == "productive"
+        assert project_moods["ProjectB"]["energy"] == 5
+
+    def test_report_metadata_added_when_missing(self):
+        """JSON に report_metadata がない場合、デフォルト値が補完されること."""
+        json_str = """{
+            "cross_references": [],
+            "contradictions": [],
+            "completions": [],
+            "context": "test",
+            "key_activities": [],
+            "projects": {}
+        }"""
+        result = _parse_enriched_json(json_str)
+        metadata = result.get("report_metadata", {})
+        assert metadata.get("mood") == "productive"
+        assert metadata.get("energy") == 4
+        assert metadata.get("tags") == ["DevLogDaily"]
+        assert metadata.get("project_moods") == {}

@@ -59,6 +59,21 @@ ENRICHER_SYSTEM_PROMPT = """あなたは日報生成パイプラインの Enrich
     {"activity": "活動内容", "impact": "影響や成果",
      "related_sources": ["関連ソース"]}
   ],
+  "report_metadata": {
+    "mood": "productive",
+    "energy": 4,
+    "tags": ["DevLogDaily", "Python", "LangGraph"],
+    "project_moods": {
+      "ProjectA": {
+        "mood": "frustrated",
+        "energy": 3
+      },
+      "ProjectB": {
+        "mood": "productive",
+        "energy": 5
+      }
+    }
+  },
   "projects": {
     "ProjectName": {
       "project_name": "正規化されたプロジェクト名",
@@ -85,7 +100,7 @@ ENRICHER_PROMPT_TEMPLATE = """以下のデータソース解析結果をクロ�
 JSON形式で補完・統合してください。
 
 これらのデータは後続の Reporter が「デイリー学習レポート」を生成するために使用されます。
-日報の各セクション（🛠 本日触れた技術・ツール、📚 学習内容、💻 開発活動、
+日報の各セクション（� 概要、🛠 触れた技術・ツール、📚 学習内容、💻 開発活動、
 🚧 発生した問題と解決策、🔄 振り返り等）に必要な情報を過不足なく抽出できるよう、
 以下の観点でデータを構造化・補完してください。
 
@@ -106,6 +121,13 @@ JSON形式で補完・統合してください。
 上記の解析結果とプロジェクトヒントを統合し、統一された JSON 形式で出力してください。
 プロジェクトヒントの candidate_name の表記ゆれを解決し、同一プロジェクトを統合した上で
 "projects" フィールドにプロジェクト単位の活動情報を生成してください。
+
+また、全データソースの内容から以下の report_metadata を推定し、出力 JSON の
+"report_metadata" フィールドに含めてください：
+- mood: 一日の全体的な気分を表す文字列（productive / reflective / frustrated 等）
+- energy: 一日の全体的なエネルギー量を 1〜5 の整数で推定
+- tags: フロントマター用タグ候補（DevLogDaily を含む最大10個のリスト）
+- project_moods: プロジェクトごとの mood/energy（キーはプロジェクト名）
 """
 
 
@@ -153,6 +175,12 @@ async def enricher_node(state: DailyState, config: AppConfig) -> DailyState:
             "context": "",
             "key_activities": [],
             "projects": {},
+            "report_metadata": {
+                "mood": "productive",
+                "energy": 4,
+                "tags": ["DevLogDaily"],
+                "project_moods": {},
+            },
             "note": "全データソースが空のため補完処理をスキップしました",
         }
         state["project_activities"] = {}
@@ -279,7 +307,16 @@ def _parse_enriched_json(result: str) -> dict:
         json_str = brace_match.group(0)
 
     try:
-        return json.loads(json_str)
+        parsed = json.loads(json_str)
+        # report_metadata がなければデフォルト値を設定
+        if "report_metadata" not in parsed:
+            parsed["report_metadata"] = {
+                "mood": "productive",
+                "energy": 4,
+                "tags": ["DevLogDaily"],
+                "project_moods": {},
+            }
+        return parsed
     except json.JSONDecodeError:
         # JSON パース失敗時はテキストをそのまま格納
         return {
@@ -289,5 +326,11 @@ def _parse_enriched_json(result: str) -> dict:
             "context": "",
             "key_activities": [],
             "projects": {},
+            "report_metadata": {
+                "mood": "productive",
+                "energy": 4,
+                "tags": ["DevLogDaily"],
+                "project_moods": {},
+            },
             "raw_output": result,
         }

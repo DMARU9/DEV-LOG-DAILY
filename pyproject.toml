@@ -61,3 +61,8 @@ line_length = 100
 pythonVersion = "3.11"
 typeCheckingMode = "standard"
 exclude = ["tests/**", "tmp/**", ".venv/**"]
+
+[dependency-groups]
+dev = [
+    "pytest>=9.1.1",
+]

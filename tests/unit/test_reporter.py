@@ -329,3 +329,79 @@ class TestFormatReportMetadata:
         assert "推定エネルギー: 4/5" in result
         assert "DevLogDaily" in result
         assert "プロジェクト別気分" not in result
+
+
+class TestFrontmatterValidation:
+    """フロントマターフィールド値の検証テスト (US3)."""
+
+    def _parse_frontmatter(self, report: str) -> dict:
+        """日報文字列から YAML フロントマターをパースする."""
+        import yaml
+
+        # --- で囲まれた YAML 部分を抽出
+        parts = report.split("---\n", 2)
+        assert len(parts) >= 3, "YAML frontmatter not found"
+        yaml_str = parts[1]
+        return yaml.safe_load(yaml_str)
+
+    def test_frontmatter_mood_valid_values(self):
+        """フロントマターの mood が有効な値であること."""
+        report = _generate_empty_report("2026-07-22")
+        fm = self._parse_frontmatter(report)
+        valid_moods = ["productive", "reflective", "frustrated", "mixed", "neutral"]
+        # デフォルト値は productive
+        assert fm["mood"] == "productive"
+        assert isinstance(fm["mood"], str)
+        assert len(fm["mood"]) > 0
+
+    def test_frontmatter_energy_range(self):
+        """フロントマターの energy が 1-5 の範囲であること."""
+        report = _generate_empty_report("2026-07-22")
+        fm = self._parse_frontmatter(report)
+        assert isinstance(fm["energy"], int)
+        assert 1 <= fm["energy"] <= 5
+
+    def test_frontmatter_tags_max_ten(self):
+        """フロントマターの tags が最大10個までであること."""
+        report = _generate_empty_report("2026-07-22")
+        fm = self._parse_frontmatter(report)
+        assert isinstance(fm["tags"], list)
+        assert len(fm["tags"]) <= 10
+        # 空レポートでは最小限のタグのみ
+        assert len(fm["tags"]) >= 1
+        assert fm["tags"][0] == "DevLogDaily"
+
+    def test_frontmatter_aliases_format(self):
+        """フロントマターの aliases が正しいフォーマットであること."""
+        report = _generate_empty_report("2026-07-22")
+        fm = self._parse_frontmatter(report)
+        assert isinstance(fm["aliases"], list)
+        assert len(fm["aliases"]) >= 1
+        assert "デイリー学習レポート 2026-07-22" in fm["aliases"]
+
+    def test_frontmatter_defaults_when_no_data(self):
+        """データがなくてもフロントマターにデフォルト値が設定されること."""
+        import datetime
+
+        report = _generate_empty_report("2026-07-22")
+        fm = self._parse_frontmatter(report)
+        # YAML パーサーは YYYY-MM-DD 形式の文字列を datetime.date に変換する
+        assert fm["date"] == datetime.date(2026, 7, 22) or fm["date"] == "2026-07-22"
+        assert fm["type"] == "daily"
+        assert fm["mood"] == "productive"
+        assert fm["energy"] == 4
+        assert "DevLogDaily" in fm["tags"]
+
+    def test_frontmatter_date_matches_target(self):
+        """フロントマターの日付が対象日と一致すること."""
+        import datetime
+
+        report = _generate_empty_report("2026-07-15")
+        fm = self._parse_frontmatter(report)
+        assert fm["date"] == datetime.date(2026, 7, 15) or fm["date"] == "2026-07-15"
+
+    def test_frontmatter_type_is_daily(self):
+        """フロントマターの type が固定値 daily であること."""
+        report = _generate_empty_report("2026-07-22")
+        fm = self._parse_frontmatter(report)
+        assert fm["type"] == "daily"
